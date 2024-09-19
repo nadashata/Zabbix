@@ -3,11 +3,11 @@
   hosts: agents
   become: yes
   vars:
-    zabbix_server: "172.31.25.244"    # Replace with your Zabbix server IP
+    zabbix_server: "x.x.x.x"    # Replace with your Zabbix server IP
     zabbix_hostname: "ZabbixAgentEncryPSKserver"  # Replace with the desired hostname
     zabbix_metadata: "Linux"
     zabbix_package_url: "https://repo.zabbix.com/zabbix/7.0/ubuntu/pool/main/z/zabbix-release/zabbix-release_7.0-2+ubuntu24.04_all.deb"
-    zabbix_package_file: "/opt/zabbix-release_7.0-2+ubuntu24.04_all.deb"
+    zabbix_package_file: "/opt/zabbix-release_7.0-2+ubuntu24.04_all.deb" # Replace with the required PKG
 
   tasks:
     - name: Download Zabbix release package to /opt
