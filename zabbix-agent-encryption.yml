@@ -1,0 +1,73 @@
+---
+- name: Configure Zabbix Agent Encryption and Manager API Calls
+  hosts: agents
+  become: yes
+  vars:
+    psk_key_file: /etc/zabbix/zabbix_agentd.psk
+    zabbix_server: "172.31.25.244"    # Replace with your Zabbix Manger server IP
+    zabbix_hostname: "ZabbixAgentEncryPSKserver"  # Replace with the agent hostname
+    zabbix_api_url: "http://172.31.25.244/zabbix/api_jsonrpc.php" # Replace with manager URL
+    zabbix_username: "Admin"
+    zabbix_password: "3fx9N(:/AYz#EIfI"
+    psk_id: "ZabbixAgentEncryPSKserver"
+
+  tasks:
+    - name: Generate PSK key
+      command: openssl rand -hex 32
+      register: psk_key
+
+    - name: Save PSK key to variable
+      set_fact:
+        psk_key: "{{ psk_key.stdout }}"
+
+    - name: Create PSK file and store the key
+      copy:
+        content: "{{ psk_key }}"
+        dest: "{{ psk_key_file }}"
+        owner: zabbix
+        group: zabbix
+        mode: '0600'
+
+    - name: Update zabbix_agentd.conf for encryption
+      lineinfile:
+        path: /etc/zabbix/zabbix_agentd.conf
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+        state: present
+      loop:
+        - { regexp: '^TLSConnect=', line: 'TLSConnect=psk' }
+        - { regexp: '^TLSAccept=', line: 'TLSAccept=psk' }
+        - { regexp: '^TLSPSKFile=', line: "TLSPSKFile={{ psk_key_file }}" }
+        - { regexp: '^TLSPSKIdentity=', line: "TLSPSKIdentity={{ psk_id }}" }
+
+    - name: Restart Zabbix agent
+      systemd:
+        name: zabbix-agent
+        state: restarted
+
+    - name: Retrieve Zabbix API token
+      shell: |
+        curl --request POST \
+          --url '{{ zabbix_api_url }}' \
+          --header 'Content-Type: application/json-rpc' \
+          --data '{"jsonrpc":"2.0","method":"user.login","params":{"username":"{{ zabbix_username }}","password":"{{ zabbix_password }}"},"id":1}' \
+          | jq -r '.result'
+      register: zabbix_auth_token
+
+    - name: Retrieve host ID using Zabbix API
+      shell: |
+        curl --request POST \
+          --url '{{ zabbix_api_url }}' \
+          --header 'Authorization: Bearer {{ zabbix_auth_token.stdout }}' \
+          --header 'Content-Type: application/json-rpc' \
+          --data '{"jsonrpc":"2.0","method":"host.get","params":{"filter":{"host":["{{ zabbix_hostname }}"]}},"id":1}' \
+          | jq -r '.result[0].hostid'
+      register: zabbix_host_id
+
+    - name: Update host encryption using Zabbix API
+      shell: |
+        curl --request POST \
+          --url '{{ zabbix_api_url }}' \
+          --header 'Authorization: Bearer {{ zabbix_auth_token.stdout }}' \
+          --header 'Content-Type: application/json-rpc' \
+          --data '{"jsonrpc":"2.0","method":"host.update","params":{"hostid":"{{ zabbix_host_id.stdout }}","tls_connect":2,"tls_accept":2,"tls_psk_identity":"{{ psk_id }}","tls_psk":"{{ psk_key }}"},"id":1}'

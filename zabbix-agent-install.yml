@@ -1,0 +1,49 @@
+---
+- name: Install and Configure Zabbix Agent
+  hosts: agents
+  become: yes
+  vars:
+    zabbix_server: "172.31.25.244"    # Replace with your Zabbix server IP
+    zabbix_hostname: "ZabbixAgentEncryPSKserver"  # Replace with the desired hostname
+    zabbix_metadata: "Linux"
+    zabbix_package_url: "https://repo.zabbix.com/zabbix/7.0/ubuntu/pool/main/z/zabbix-release/zabbix-release_7.0-2+ubuntu24.04_all.deb"
+    zabbix_package_file: "/opt/zabbix-release_7.0-2+ubuntu24.04_all.deb"
+
+  tasks:
+    - name: Download Zabbix release package to /opt
+      get_url:
+        url: "{{ zabbix_package_url }}"
+        dest: "{{ zabbix_package_file }}"
+
+    - name: Install Zabbix release package
+      apt:
+        deb: "{{ zabbix_package_file }}"
+        state: present
+
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install Zabbix agent
+      apt:
+        name: zabbix-agent
+        state: present
+
+    - name: Enable and start Zabbix agent
+      systemd:
+        name: zabbix-agent
+        state: started
+        enabled: yes
+
+    - name: Configure Zabbix agent
+      lineinfile:
+        path: /etc/zabbix/zabbix_agentd.conf
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+        state: present
+          #backrefs: yes
+      loop:
+        - { regexp: '^Server=', line: "Server={{ zabbix_server }}" }
+        - { regexp: '^ServerActive=', line: "ServerActive={{ zabbix_server }}" }
+        - { regexp: '^Hostname=', line: "Hostname={{ zabbix_hostname }}" }
+        - { regexp: '^HostMetadataItem=', line: "HostMetadata={{ zabbix_metadata }}" }
