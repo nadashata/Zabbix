@@ -4,11 +4,11 @@
   become: yes
   vars:
     psk_key_file: /etc/zabbix/zabbix_agentd.psk
-    zabbix_server: "172.31.25.244"    # Replace with your Zabbix Manger server IP
+    zabbix_server: "x.x.x.x"    # Replace with your Zabbix Manger server IP
     zabbix_hostname: "ZabbixAgentEncryPSKserver"  # Replace with the agent hostname
-    zabbix_api_url: "http://172.31.25.244/zabbix/api_jsonrpc.php" # Replace with manager URL
-    zabbix_username: "Admin"
-    zabbix_password: "3fx9N(:/AYz#EIfI"
+    zabbix_api_url: "http://x.x.x.x/zabbix/api_jsonrpc.php" # Replace with manager URL
+    zabbix_username: "Admin" # Replace with Zabbix Manager API user 
+    zabbix_password: "password" # Replace with Zabbix Manager API password 
     psk_id: "ZabbixAgentEncryPSKserver"
 
   tasks:
